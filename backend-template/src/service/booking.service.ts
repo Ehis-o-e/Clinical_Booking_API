@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { throwAppError } from '@app-core/errors';
 import prisma from '../config/database';
 import type { BookingInput, ResetInput } from '../validator/booking.validator';
@@ -19,6 +20,10 @@ const toBookingResponse = (booking: {
     status: booking.status,
     created_at: booking.createdAt.toISOString()
 });
+
+const isConfirmedBookingConflict = (error: unknown) => {
+    return error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+};
 
 export const resetSlots = async ({ slots }: ResetInput): Promise<void> => {
     await prisma.$transaction(async (transaction) => {
@@ -50,26 +55,36 @@ export const listSlots = async (provider?: string) => {
 };
 
 export const createBooking = async (input: BookingInput) => {
-    const slot = await prisma.slot.findUnique({ where: { id: input.slot_id } });
+    try {
+        return await prisma.$transaction(async (transaction) => {
+            const slot = await transaction.slot.findUnique({ where: { id: input.slot_id } });
 
-    if (!slot) {
-        throwAppError('slot not found', 'NOT_FOUND');
-    }
+            if (!slot) {
+                throwAppError('slot not found', 'NOT_FOUND');
+            }
 
-    if (slot.start <= new Date()) {
-        throwAppError('slot already started', 'VALIDATION_ERROR');
-    }
+            if (slot.start <= new Date()) {
+                throwAppError('slot already started', 'VALIDATION_ERROR');
+            }
 
-    const booking = await prisma.booking.create({
-        data: {
-            slotId: input.slot_id,
-            name: input.name,
-            email: input.email,
-            status: 'confirmed'
+            const booking = await transaction.booking.create({
+                data: {
+                    slotId: input.slot_id,
+                    name: input.name,
+                    email: input.email,
+                    status: 'confirmed'
+                }
+            });
+
+            return toBookingResponse(booking);
+        });
+    } catch (error) {
+        if (isConfirmedBookingConflict(error)) {
+            throwAppError('slot already booked', 'CONFLICT');
         }
-    });
 
-    return toBookingResponse(booking);
+        throw error;
+    }
 };
 
 export const getBooking = async (id: string) => {
@@ -80,4 +95,25 @@ export const getBooking = async (id: string) => {
     }
 
     return toBookingResponse(booking);
+};
+
+export const cancelBooking = async (id: string) => {
+    return prisma.$transaction(async (transaction) => {
+        const result = await transaction.booking.updateMany({
+            where: { id, status: 'confirmed' },
+            data: { status: 'cancelled' }
+        });
+
+        const booking = await transaction.booking.findUnique({ where: { id } });
+
+        if (!booking) {
+            throwAppError('booking not found', 'NOT_FOUND');
+        }
+
+        if (result.count === 0) {
+            throwAppError('booking already cancelled', 'CONFLICT');
+        }
+
+        return toBookingResponse(booking);
+    });
 };

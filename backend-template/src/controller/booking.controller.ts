@@ -1,6 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { createAppError } from '@app-core/errors';
-import { createBooking, getBooking, listSlots, resetSlots } from '../service/booking.service';
+import {
+    cancelBooking,
+    createBooking,
+    getBooking,
+    listSlots,
+    resetSlots
+} from '../service/booking.service';
 import { bookingIdSchema, bookingSchema, resetSchema, slotsQuerySchema } from '../validator/booking.validator';
 
 const invalidRequest = (next: NextFunction) =>
@@ -54,6 +60,19 @@ export const getBookingById = async (req: Request, res: Response, next: NextFunc
 
     try {
         return res.json(await getBooking(parsed.data.id));
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const cancelBookingById = async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = bookingIdSchema.safeParse(req.params);
+    if (!parsed.success) {
+        return invalidRequest(next);
+    }
+
+    try {
+        return res.json(await cancelBooking(parsed.data.id));
     } catch (error) {
         return next(error);
     }
