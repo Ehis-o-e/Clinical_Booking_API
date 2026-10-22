@@ -46,4 +46,15 @@ model Booking {
   slot      Slot          @relation(fields: [slotId], references: [id])
 
   @@index([slotId])
+  @@index([email, createdAt, id])
+}
+
+model IdempotencyRecord {
+  key            String   @id
+  requestHash    String   @map("request_hash")
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@map("idempotency_records")
 }

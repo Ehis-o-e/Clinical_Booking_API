@@ -20,6 +20,7 @@ export default defineConfig({
         passWithNoTests: true,
         include: ['tests/**/*.test.ts', 'src/**/*.test.ts', 'core/**/*.test.ts'],
         exclude: ['**/node_modules/**', '**/dist/**', '**/prisma/**'],
+        fileParallelism: false,
         clearMocks: true,
         restoreMocks: true,
         coverage: {

@@ -4,10 +4,18 @@ import {
     cancelBooking,
     createBooking,
     getBooking,
+    listBookings,
     listSlots,
     resetSlots
 } from '../service/booking.service';
-import { bookingIdSchema, bookingSchema, resetSchema, slotsQuerySchema } from '../validator/booking.validator';
+import {
+    bookingIdSchema,
+    bookingSchema,
+    bookingsQuerySchema,
+    idempotencyKeySchema,
+    resetSchema,
+    slotsQuerySchema
+} from '../validator/booking.validator';
 
 const invalidRequest = (next: NextFunction) =>
     next(createAppError('Invalid request', 'VALIDATION_ERROR'));
@@ -45,8 +53,34 @@ export const postBooking = async (req: Request, res: Response, next: NextFunctio
         return invalidRequest(next);
     }
 
+    const idempotencyHeader = req.get('Idempotency-Key');
+    const idempotencyKey = idempotencyHeader === undefined
+        ? undefined
+        : idempotencyKeySchema.safeParse(idempotencyHeader);
+
+    if (idempotencyKey !== undefined && !idempotencyKey.success) {
+        return invalidRequest(next);
+    }
+
     try {
-        return res.status(201).json(await createBooking(parsed.data));
+        const result = await createBooking(
+            parsed.data,
+            idempotencyKey === undefined ? undefined : idempotencyKey.data
+        );
+        return res.status(result.status).json(result.body);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+export const getBookings = async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = bookingsQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        return invalidRequest(next);
+    }
+
+    try {
+        return res.json(await listBookings(parsed.data));
     } catch (error) {
         return next(error);
     }

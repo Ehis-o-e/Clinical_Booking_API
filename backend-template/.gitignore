@@ -81,6 +81,7 @@ web_modules/
 
 # Local integration test: it requires TEST_DATABASE_URL and resets its database.
 tests/level3.local.test.ts
+tests/level4.local.test.ts
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

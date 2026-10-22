@@ -39,7 +39,7 @@ app.use(
         origin: process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
             : ['http://localhost:5173', 'http://localhost:3000'],
-        allowedHeaders: ['Content-Type', 'X-API-Key'],
+        allowedHeaders: ['Content-Type', 'Idempotency-Key', 'X-API-Key'],
         credentials: true
     })
 );
