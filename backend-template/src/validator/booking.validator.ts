@@ -12,9 +12,9 @@ export const resetSchema = z.object({
 });
 
 export const bookingSchema = z.object({
-    slot_id: z.string(),
-    name: z.string(),
-    email: z.string()
+    slot_id: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    email: z.string().trim().toLowerCase().min(1).email()
 });
 
 export const bookingIdSchema = z.object({

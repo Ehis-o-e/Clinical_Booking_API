@@ -7,7 +7,9 @@ import { createAppError } from '@app-core/errors';
 import { appLogger } from '@app-core/logger';
 import { MESSAGES } from '@app-core/messages';
 import prisma from './config/database';
+import { getApiKey } from './config/api-key';
 import { getRateLimitConfig } from './config/rate-limit';
+import { createApiKeyMiddleware } from './middleware/api-key.middleware';
 import {
     createRateLimiter,
     getDefaultRateLimitKeyDetails
@@ -20,6 +22,7 @@ import { sendNormalizedError } from './utils/service-error.utils';
 dotenv.config();
 
 const app: Application = express();
+const apiKeyMiddleware = createApiKeyMiddleware(getApiKey());
 const rateLimitConfig = getRateLimitConfig();
 const apiRateLimiter = createRateLimiter({
     name: 'api',
@@ -36,6 +39,7 @@ app.use(
         origin: process.env.CORS_ORIGIN
             ? process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
             : ['http://localhost:5173', 'http://localhost:3000'],
+        allowedHeaders: ['Content-Type', 'X-API-Key'],
         credentials: true
     })
 );
@@ -92,7 +96,7 @@ app.get('/', (_req: Request, res: Response) => {
     return sendSuccess(res, { timestamp: new Date().toISOString() }, 'API is running');
 });
 
-app.use(apiRateLimiter, bookingRoutes);
+app.use(apiRateLimiter, apiKeyMiddleware, bookingRoutes);
 app.use('/api/v1', apiRateLimiter, apiRoutes);
 
 app.use((_req: Request, _res: Response, next: NextFunction) => {

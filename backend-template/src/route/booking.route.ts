@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { getBookingById, getSlots, postBooking, reset } from '../controller/booking.controller';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 router.post('/reset', reset);
 router.get('/slots', getSlots);

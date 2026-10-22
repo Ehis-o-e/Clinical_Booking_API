@@ -50,6 +50,16 @@ export const listSlots = async (provider?: string) => {
 };
 
 export const createBooking = async (input: BookingInput) => {
+    const slot = await prisma.slot.findUnique({ where: { id: input.slot_id } });
+
+    if (!slot) {
+        throwAppError('slot not found', 'NOT_FOUND');
+    }
+
+    if (slot.start <= new Date()) {
+        throwAppError('slot already started', 'VALIDATION_ERROR');
+    }
+
     const booking = await prisma.booking.create({
         data: {
             slotId: input.slot_id,
