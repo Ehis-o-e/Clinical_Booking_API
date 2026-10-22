@@ -19,17 +19,9 @@ export const sendSuccess = <T>(
 export const sendError = (
     res: Response,
     message: string,
-    code: string = 'ERROR',
+    _code: string = 'ERROR',
     statusCode: number = 500,
-    details?: unknown
+    _details?: unknown
 ): Response => {
-    const response: ApiResponse = {
-        success: false,
-        error: {
-            code,
-            message,
-            details
-        }
-    };
-    return res.status(statusCode).json(response);
+    return res.status(statusCode).json({ error: message });
 };

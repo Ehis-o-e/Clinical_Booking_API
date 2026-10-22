@@ -1,6 +1,5 @@
 import express, { Application, NextFunction, Request, Response } from 'express';
 import './types/express';
-import { clerkMiddleware } from '@clerk/express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
@@ -13,6 +12,7 @@ import {
     createRateLimiter,
     getDefaultRateLimitKeyDetails
 } from './middleware/rate-limit.middleware';
+import bookingRoutes from './route/booking.route';
 import apiRoutes from './route';
 import { sendSuccess } from './utils/response.utils';
 import { sendNormalizedError } from './utils/service-error.utils';
@@ -30,12 +30,6 @@ const apiRateLimiter = createRateLimiter({
 
 app.set('trust proxy', rateLimitConfig.trustProxy);
 
-app.use(
-    clerkMiddleware({
-        publishableKey: process.env.CLERK_PUBLISHABLE_KEY,
-        secretKey: process.env.CLERK_SECRET_KEY
-    })
-);
 app.use(helmet());
 app.use(
     cors({
@@ -98,6 +92,7 @@ app.get('/', (_req: Request, res: Response) => {
     return sendSuccess(res, { timestamp: new Date().toISOString() }, 'API is running');
 });
 
+app.use(apiRateLimiter, bookingRoutes);
 app.use('/api/v1', apiRateLimiter, apiRoutes);
 
 app.use((_req: Request, _res: Response, next: NextFunction) => {

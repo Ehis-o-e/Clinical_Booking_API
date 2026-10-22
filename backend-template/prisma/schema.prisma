@@ -11,6 +11,11 @@ enum UserRole {
   user
 }
 
+enum BookingStatus {
+  confirmed
+  cancelled
+}
+
 model User {
   id        String   @id @default(uuid())
   clerkId   String?  @unique
@@ -18,4 +23,27 @@ model User {
   role      UserRole @default(user)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model Slot {
+  id       String    @id
+  provider String
+  start    DateTime  @db.Timestamptz(3)
+  end      DateTime  @db.Timestamptz(3)
+  bookings Booking[]
+
+  @@index([start])
+  @@index([provider, start])
+}
+
+model Booking {
+  id        String        @id @default(uuid())
+  slotId    String        @map("slot_id")
+  name      String
+  email     String
+  status    BookingStatus @default(confirmed)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  slot      Slot          @relation(fields: [slotId], references: [id])
+
+  @@index([slotId])
 }
