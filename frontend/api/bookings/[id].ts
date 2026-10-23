@@ -3,7 +3,8 @@ import { forwardClinicRequest } from '../_proxy.js';
 
 export default function handler(request: IncomingMessage, response: ServerResponse) {
     const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
-    const id = pathname.split('/').filter(Boolean).at(-1);
+    const parts = pathname.split('/').filter(Boolean);
+    const id = parts[parts.length - 1];
 
     if (!id) {
         response.statusCode = 400;
