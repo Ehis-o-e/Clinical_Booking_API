@@ -17,3 +17,23 @@ button,
 input {
   font: inherit;
 }
+
+button:not(:disabled) {
+  cursor: pointer;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+button:not(:disabled):hover {
+  filter: brightness(0.94);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button:not(:disabled) {
+    transition: none;
+  }
+
+  button:not(:disabled):hover {
+    transform: none;
+  }
+}

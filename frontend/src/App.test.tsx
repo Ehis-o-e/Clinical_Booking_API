@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -54,6 +54,53 @@ describe('Clinical Booking API tester', () => {
         const secondHeaders = (mockFetch.mock.calls[1]?.[1] as RequestInit).headers as Record<string, string>;
         expect(firstHeaders['Idempotency-Key']).toBeTruthy();
         expect(secondHeaders['Idempotency-Key']).toBe(firstHeaders['Idempotency-Key']);
+    });
+
+    it('shows booking progress and ignores a second submit while the request is pending', async () => {
+        let resolveRequest: (response: Response) => void = () => undefined;
+        mockFetch.mockImplementationOnce(
+            () => new Promise<Response>((resolve) => {
+                resolveRequest = resolve;
+            })
+        );
+        render(<App />);
+        fireEvent.click(screen.getByRole('button', { name: 'Create booking' }));
+        fireEvent.change(screen.getByLabelText('slot_id'), { target: { value: 's1' } });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Send POST /bookings' }));
+        const submitButton = screen.getByRole('button', { name: 'Sending booking...' });
+        expect(submitButton).toBeDisabled();
+        fireEvent.click(submitButton);
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+
+        resolveRequest(jsonResponse({ id: 'b1', slot_id: 's1', name: '', email: '', status: 'confirmed', created_at: '2030-01-01T09:00:00Z' }, 201));
+        await waitFor(() => expect(submitButton).not.toBeDisabled());
+    });
+
+    it('keeps booking responses off the Reset slots screen', async () => {
+        mockFetch.mockResolvedValue(jsonResponse({ id: 'b1', slot_id: 's1', name: 'Ada', email: 'ada@example.com', status: 'confirmed', created_at: '2030-01-01T09:00:00Z' }, 201));
+        render(<App />);
+        fireEvent.click(screen.getByRole('button', { name: 'Create booking' }));
+        fireEvent.change(screen.getByLabelText('slot_id'), { target: { value: 's1' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Send POST /bookings' }));
+        await screen.findByLabelText('API response');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Reset slots' }));
+        expect(screen.queryByLabelText('API response')).not.toBeInTheDocument();
+    });
+
+    it('shows the Reset confirmation without a raw API response panel', async () => {
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
+        mockFetch.mockResolvedValue(jsonResponse({}));
+        render(<App />);
+        const resetSection = screen.getByRole('heading', { name: 'Test appointment slots' }).parentElement;
+        if (!resetSection) {
+            throw new Error('Expected reset slots section');
+        }
+        fireEvent.click(within(resetSection).getByRole('button', { name: 'Reset slots' }));
+
+        expect(await screen.findByRole('status')).toHaveTextContent('Reset complete: 1 slot sent.');
+        expect(screen.queryByLabelText('API response')).not.toBeInTheDocument();
     });
 
     it('cancels selected booking table rows', async () => {

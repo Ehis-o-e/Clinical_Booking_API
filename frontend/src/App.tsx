@@ -37,6 +37,8 @@ export default function App() {
     const [slotsLoaded, setSlotsLoaded] = useState(false);
     const [booking, setBooking] = useState<BookingPayload>({ slot_id: '', name: '', email: '' });
     const bookingAttempt = useRef<{ body: string; key: string } | undefined>(undefined);
+    const bookingRequestPending = useRef(false);
+    const [isBooking, setIsBooking] = useState(false);
     const [bookingEmail, setBookingEmail] = useState('');
     const [bookingLimit, setBookingLimit] = useState('10');
     const [history, setHistory] = useState<BookingHistory>();
@@ -73,7 +75,6 @@ export default function App() {
         setResetError(undefined);
         try {
             await resetSlots(request);
-            setResult({ status: 200, body: {} });
             setResetSuccess(`Reset complete: ${request.length} slot${request.length === 1 ? '' : 's'} sent.`);
         } catch (error) {
             setResetError(error instanceof ClinicApiError ? error.message : 'Could not reach the backend.');
@@ -99,6 +100,12 @@ export default function App() {
 
     const submitBooking = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
+        if (bookingRequestPending.current) {
+            return;
+        }
+
+        bookingRequestPending.current = true;
+        setIsBooking(true);
         const body = JSON.stringify(booking);
         if (!bookingAttempt.current || bookingAttempt.current.body !== body) {
             bookingAttempt.current = { body, key: crypto.randomUUID() };
@@ -108,6 +115,9 @@ export default function App() {
             setResult({ status: 201, body: response });
         } catch (error) {
             showError(error);
+        } finally {
+            bookingRequestPending.current = false;
+            setIsBooking(false);
         }
     };
 
@@ -152,6 +162,11 @@ export default function App() {
         setSelectedBookingIds((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);
     };
 
+    const changeScreen = (nextScreen: ApiScreen) => {
+        setScreen(nextScreen);
+        setResult(undefined);
+    };
+
     const cancelSelected = async () => {
         if (selectedBookingIds.length === 0 || !window.confirm(`Cancel ${selectedBookingIds.length} selected booking(s)?`)) {
             return;
@@ -191,11 +206,11 @@ export default function App() {
             case 'create-booking':
                 return <>
                     <PageTitle method="POST" path="/bookings" description="Send the booking request exactly as the API receives it. Idempotency is automatic; unchanged retries reuse one key." />
-                    <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={(event) => void submitBooking(event)}>
+                    <form className="mt-6 grid gap-4 sm:grid-cols-2" onSubmit={(event) => void submitBooking(event)} aria-busy={isBooking}>
                         <Input label="slot_id" value={booking.slot_id} onChange={(value) => setBooking((current) => ({ ...current, slot_id: value }))} />
                         <Input label="name" value={booking.name} onChange={(value) => setBooking((current) => ({ ...current, name: value }))} />
                         <Input label="email" value={booking.email} onChange={(value) => setBooking((current) => ({ ...current, email: value }))} />
-                        <button className="min-h-10 rounded-lg bg-teal-700 px-4 text-sm font-bold text-white sm:col-span-2" type="submit">Send POST /bookings</button>
+                        <button className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-teal-700 px-4 text-sm font-bold text-white transition hover:bg-teal-800 disabled:cursor-wait disabled:bg-teal-600 sm:col-span-2" type="submit" disabled={isBooking}>{isBooking && <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />}{isBooking ? 'Sending booking...' : 'Send POST /bookings'}</button>
                     </form>
                 </>;
             case 'bookings':
@@ -230,7 +245,7 @@ export default function App() {
         }
     })();
 
-    return <main className="min-h-screen bg-slate-100 text-slate-900 lg:grid lg:grid-cols-[15rem_1fr]"><Sidebar active={screen} onChange={setScreen} /><section className="p-4 sm:p-8"><div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">{content}<ApiResult status={result?.status} body={result?.body} retryAfter={result?.retryAfter} /></div></section></main>;
+    return <main className="min-h-screen bg-slate-100 text-slate-900 lg:grid lg:grid-cols-[15rem_1fr]"><Sidebar active={screen} onChange={changeScreen} /><section className="p-4 sm:p-8"><div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">{content}{screen !== 'reset' && <ApiResult status={result?.status} body={result?.body} retryAfter={result?.retryAfter} />}</div></section></main>;
 }
 
 function PageTitle({ method, path, description }: { method: string; path: string; description: string }) {
@@ -246,5 +261,5 @@ function SlotTable({ slots }: { slots: AppointmentSlot[] }) {
 }
 
 function BookingTable({ bookings, selectedIds, onToggle }: { bookings: Booking[]; selectedIds: string[]; onToggle: (id: string) => void }) {
-    return <div className="mt-4 overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="border-b bg-slate-50 text-slate-600"><tr><th className="p-3">Select</th><th className="p-3">ID</th><th className="p-3">Slot</th><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Status</th><th className="p-3">Created at</th></tr></thead><tbody>{bookings.map((booking) => <tr className="border-b" key={booking.id}><td className="p-3"><input aria-label={`Select ${booking.id}`} checked={selectedIds.includes(booking.id)} onChange={() => onToggle(booking.id)} type="checkbox" /></td><td className="p-3">{booking.id}</td><td className="p-3">{booking.slot_id}</td><td className="p-3">{booking.name}</td><td className="p-3">{booking.email}</td><td className="p-3">{booking.status}</td><td className="p-3">{booking.created_at}</td></tr>)}</tbody></table></div>;
+    return <div className="mt-4 overflow-x-auto"><table className="min-w-full whitespace-nowrap text-left text-sm"><thead className="border-b bg-slate-50 text-slate-600"><tr><th className="p-3">Select</th><th className="p-3">ID</th><th className="p-3">Slot</th><th className="p-3">Name</th><th className="p-3">Email</th><th className="p-3">Status</th><th className="p-3">Created at</th></tr></thead><tbody>{bookings.map((booking) => <tr className="border-b" key={booking.id}><td className="p-3"><input aria-label={`Select ${booking.id}`} checked={selectedIds.includes(booking.id)} onChange={() => onToggle(booking.id)} type="checkbox" /></td><td className="p-3">{booking.id}</td><td className="p-3">{booking.slot_id}</td><td className="p-3">{booking.name}</td><td className="p-3">{booking.email}</td><td className="p-3">{booking.status}</td><td className="p-3">{booking.created_at}</td></tr>)}</tbody></table></div>;
 }
