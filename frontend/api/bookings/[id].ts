@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { forwardClinicRequest } from '../_proxy';
+import { forwardClinicRequest } from '../_proxy.js';
 
 export default function handler(request: IncomingMessage, response: ServerResponse) {
     const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
