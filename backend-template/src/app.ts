@@ -8,12 +8,7 @@ import { appLogger } from '@app-core/logger';
 import { MESSAGES } from '@app-core/messages';
 import prisma from './config/database';
 import { getApiKey } from './config/api-key';
-import { getRateLimitConfig } from './config/rate-limit';
 import { createApiKeyMiddleware } from './middleware/api-key.middleware';
-import {
-    createRateLimiter,
-    getDefaultRateLimitKeyDetails
-} from './middleware/rate-limit.middleware';
 import bookingRoutes from './route/booking.route';
 import apiRoutes from './route';
 import { sendSuccess } from './utils/response.utils';
@@ -23,15 +18,6 @@ dotenv.config();
 
 const app: Application = express();
 const apiKeyMiddleware = createApiKeyMiddleware(getApiKey());
-const rateLimitConfig = getRateLimitConfig();
-const apiRateLimiter = createRateLimiter({
-    name: 'api',
-    windowMs: rateLimitConfig.apiWindowMs,
-    limit: rateLimitConfig.apiMax,
-    keyDetails: getDefaultRateLimitKeyDetails
-});
-
-app.set('trust proxy', rateLimitConfig.trustProxy);
 
 app.use(helmet());
 app.use(
@@ -96,8 +82,8 @@ app.get('/', (_req: Request, res: Response) => {
     return sendSuccess(res, { timestamp: new Date().toISOString() }, 'API is running');
 });
 
-app.use(apiRateLimiter, apiKeyMiddleware, bookingRoutes);
-app.use('/api/v1', apiRateLimiter, apiRoutes);
+app.use(apiKeyMiddleware, bookingRoutes);
+app.use('/api/v1', apiRoutes);
 
 app.use((_req: Request, _res: Response, next: NextFunction) => {
     next(createAppError(MESSAGES.COMMON.ROUTE_NOT_FOUND, 'NOT_FOUND'));
