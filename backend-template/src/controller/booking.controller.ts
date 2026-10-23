@@ -4,50 +4,19 @@ import {
     cancelBooking,
     createBooking,
     getBooking,
-    listBookings,
-    listSlots,
-    resetSlots
+    listBookings
 } from '../service/booking.service';
 import {
     bookingIdSchema,
     bookingAttemptEmailSchema,
     bookingSchema,
     bookingsQuerySchema,
-    idempotencyKeySchema,
-    resetSchema,
-    slotsQuerySchema
+    idempotencyKeySchema
 } from '../validator/booking.validator';
 import { consumeBookingAttempt } from '../service/booking-rate-limit.service';
 
 const invalidRequest = (next: NextFunction) =>
     next(createAppError('Invalid request', 'VALIDATION_ERROR'));
-
-export const reset = async (req: Request, res: Response, next: NextFunction) => {
-    const parsed = resetSchema.safeParse(req.body);
-    if (!parsed.success) {
-        return invalidRequest(next);
-    }
-
-    try {
-        await resetSlots(parsed.data);
-        return res.status(200).json({});
-    } catch (error) {
-        return next(error);
-    }
-};
-
-export const getSlots = async (req: Request, res: Response, next: NextFunction) => {
-    const parsed = slotsQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-        return invalidRequest(next);
-    }
-
-    try {
-        return res.json({ slots: await listSlots(parsed.data.provider) });
-    } catch (error) {
-        return next(error);
-    }
-};
 
 export const postBooking = async (req: Request, res: Response, next: NextFunction) => {
     const email = bookingAttemptEmailSchema.safeParse(req.body);

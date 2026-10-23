@@ -10,6 +10,7 @@ import prisma from './config/database';
 import { getApiKey } from './config/api-key';
 import { createApiKeyMiddleware } from './middleware/api-key.middleware';
 import bookingRoutes from './route/booking.route';
+import slotRoutes from './route/slot.route';
 import apiRoutes from './route';
 import { sendSuccess } from './utils/response.utils';
 import { sendNormalizedError } from './utils/service-error.utils';
@@ -82,7 +83,7 @@ app.get('/', (_req: Request, res: Response) => {
     return sendSuccess(res, { timestamp: new Date().toISOString() }, 'API is running');
 });
 
-app.use(apiKeyMiddleware, bookingRoutes);
+app.use(apiKeyMiddleware, slotRoutes, bookingRoutes);
 app.use('/api/v1', apiRoutes);
 
 app.use((_req: Request, _res: Response, next: NextFunction) => {
