@@ -10,12 +10,14 @@ import {
 } from '../service/booking.service';
 import {
     bookingIdSchema,
+    bookingAttemptEmailSchema,
     bookingSchema,
     bookingsQuerySchema,
     idempotencyKeySchema,
     resetSchema,
     slotsQuerySchema
 } from '../validator/booking.validator';
+import { consumeBookingAttempt } from '../service/booking-rate-limit.service';
 
 const invalidRequest = (next: NextFunction) =>
     next(createAppError('Invalid request', 'VALIDATION_ERROR'));
@@ -48,6 +50,21 @@ export const getSlots = async (req: Request, res: Response, next: NextFunction) 
 };
 
 export const postBooking = async (req: Request, res: Response, next: NextFunction) => {
+    const email = bookingAttemptEmailSchema.safeParse(req.body);
+
+    if (email.success) {
+        try {
+            const rateLimit = await consumeBookingAttempt(email.data.email);
+
+            if (!rateLimit.allowed) {
+                res.set('Retry-After', String(rateLimit.retryAfterSeconds));
+                return res.status(429).json({ error: 'too many booking attempts' });
+            }
+        } catch (error) {
+            return next(error);
+        }
+    }
+
     const parsed = bookingSchema.safeParse(req.body);
     if (!parsed.success) {
         return invalidRequest(next);

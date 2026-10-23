@@ -17,6 +17,10 @@ export const bookingSchema = z.object({
     email: z.string().trim().toLowerCase().min(1).email()
 });
 
+export const bookingAttemptEmailSchema = z.object({
+    email: z.string().trim().toLowerCase().min(1).email()
+});
+
 export const idempotencyKeySchema = z.string().trim().min(1);
 
 export const bookingIdSchema = z.object({

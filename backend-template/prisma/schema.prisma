@@ -58,3 +58,18 @@ model IdempotencyRecord {
 
   @@map("idempotency_records")
 }
+
+model BookingRateLimit {
+  email String @id
+
+  @@map("booking_rate_limits")
+}
+
+model BookingRateAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([email, createdAt])
+  @@map("booking_rate_attempts")
+}

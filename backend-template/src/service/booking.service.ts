@@ -147,6 +147,8 @@ const replayIdempotencyResponse = async (
 
 export const resetSlots = async ({ slots }: ResetInput): Promise<void> => {
     await prisma.$transaction(async (transaction) => {
+        await transaction.bookingRateAttempt.deleteMany();
+        await transaction.bookingRateLimit.deleteMany();
         await transaction.idempotencyRecord.deleteMany();
         await transaction.booking.deleteMany();
         await transaction.slot.deleteMany();
